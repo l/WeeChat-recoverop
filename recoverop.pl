@@ -1,5 +1,5 @@
 #
-# recoverop.pl - WeeChat script to recover channel operator greedily and set channel mode +sn -
+# recoverop.pl - WeeChat script to recover channel operator privilege greedily and set channel mode +sn -
 #
 # Copyright (C) 2012 "AYANOKOUZI, Ryuunosuke" <i38w7i3@yahoo.co.jp>
 #
@@ -16,18 +16,62 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
+# Discription:
+#     recoverop.pl tries to take a channel operator privilege by part and join
+#     after last user leave a channel. After loading the script, by default, it
+#     is unavirable for all channels. You can specify server and channel in
+#     which the script is avirable by perl regular expression.
+#
+# Vars:
+#     plugins.var.perl.recoverop.regex
+#         perl regular expression (format: "server.channel") make recoverop.pl
+#         available.
+#
+# Example:
+#     /set plugins.var.perl.recoverop.regex "\A(freenode\.#weechat)|(oftc\.#debian.*)\Z"
+#         try to recover channel operator privilege in #weechat on freenode and
+#         in all channels starting from "#debian" on oftc.
+#     /set plugins.var.perl.recoverop.regex ".*"
+#         recoverop is avirable for all channels.
+#     /set plugins.var.perl.recoverop.regex ""
+#         recoverop is unavirable for all channels.
+#     /unset plugins.var.perl.recoverop.regex
+#         recoverop is unavirable for all channels (default).
+#
 
 use strict;
 use warnings;
 
 weechat::register(
     "recoverop", "AYANOKOUZI, Ryuunosuke",
-    "0.1.0", "GPL3", "recover operator",
+    "0.1.1", "GPL3", "recover operator",
     "", ""
 );
+my $script_name = "recoverop";
 
 weechat::hook_signal( "*,irc_raw_in_PART", "my_signal_irc_in_PART_cb", "" );
 weechat::hook_signal( "*,irc_raw_in_QUIT", "my_signal_irc_in_QUIT_cb", "" );
+weechat::hook_config( "plugins.var.perl.$script_name.*", "config_cb", "" );
+
+my $conf = &configure();
+
+sub config_cb {
+    my $data   = shift;
+    my $option = shift;
+    my $value  = shift;
+    $conf = &configure();
+    return weechat::WEECHAT_RC_OK;
+}
+
+sub configure {
+    my $val = weechat::config_get_plugin('regex');
+    if ( !defined $val ) {
+        return { regex => undef };
+    }
+    $conf->{regex} = qr/$val/;
+    weechat::print( "", $conf->{regex} );
+    return $conf;
+}
 
 sub my_signal_cb {
     foreach (@_) {
@@ -37,10 +81,13 @@ sub my_signal_cb {
 }
 
 sub part_join {
-    weechat::print( "", join ",", @_ );
-    my $server      = shift;
-    my $channel     = shift;
-    my $nick        = shift;
+    my $server  = shift;
+    my $channel = shift;
+    my $nick    = shift;
+    if ( "$server.$channel" !~ m/$conf->{regex}/ ) {
+        return weechat::WEECHAT_RC_OK;
+    }
+    weechat::print( "", ( join ",", ( $server, $channel, $nick ) ) );
     my $nicks_count = get_nicks_count( $server, $channel );
     if ( defined $nicks_count && $nicks_count == 2 ) {
         my $myname = get_myname($server);
@@ -49,9 +96,11 @@ sub part_join {
             if ( defined $prefix && $prefix ne '@' ) {
                 my $buffer =
                   weechat::buffer_search( "irc", "$server.$channel" );
-                weechat::command( $buffer, "/part" );
-                weechat::command( $buffer, "/join -server $server $channel" );
-                weechat::command( $buffer, "/mode +sn" );
+                my $sec = int rand 10;
+                weechat::command( $buffer, "/wait ${sec}s /part" );
+                weechat::command( $buffer,
+                    "/wait ${sec}s /join -server $server $channel" );
+                weechat::command( $buffer, "/wait ${sec}s /mode +sn" );
             }
         }
     }
