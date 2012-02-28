@@ -16,11 +16,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Discription:
+# Description:
 #     recoverop.pl tries to take a channel operator privilege by part and join
 #     after last user leave a channel. After loading the script, by default, it
-#     is unavirable for all channels. You can specify server and channel in
-#     which the script is avirable by perl regular expression.
+#     is unavailable for all channels. You can specify server and channel in
+#     which the script is available by perl regular expression.
 #
 # Vars:
 #     plugins.var.perl.recoverop.regex
@@ -32,11 +32,11 @@
 #         try to recover channel operator privilege in #weechat on freenode and
 #         in all channels starting from "#debian" on oftc.
 #     /set plugins.var.perl.recoverop.regex ".*"
-#         recoverop is avirable for all channels.
+#         recoverop is available for all channels.
 #     /set plugins.var.perl.recoverop.regex ""
-#         recoverop is unavirable for all channels.
+#         recoverop is unavailable for all channels.
 #     /unset plugins.var.perl.recoverop.regex
-#         recoverop is unavirable for all channels (default).
+#         recoverop is unavailable for all channels (default).
 #
 
 use strict;
